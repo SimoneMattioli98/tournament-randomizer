@@ -1,1 +1,8 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+.python-version
+*.iml
 .idea
+*.ogv
+*.csv

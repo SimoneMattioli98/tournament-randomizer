@@ -1,40 +1,86 @@
-import altair as alt
-import numpy as np
-import pandas as pd
+import random
+
 import streamlit as st
 
-"""
-# Welcome to Streamlit!
 
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:.
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
+# Funzione per generare coppie di squadre
+def create_pairs(teams):
+    random.shuffle(teams)
+    pairs = []
+    while len(teams) > 0:
+        team1 = teams.pop(0)
+        if teams:
+            team2 = teams.pop(0)
+        else:
+            team2 = "BYE"  # Se dispari, l'ultima squadra passa automaticamente
+        pairs.append((team1, team2))
+    return pairs
 
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+# Inizializzazione delle variabili di sessione
+if 'teams' not in st.session_state:
+    st.session_state.teams = []
+if 'round' not in st.session_state:
+    st.session_state.round = 1
+if 'current_pairs' not in st.session_state:
+    st.session_state.current_pairs = []
+if 'winners' not in st.session_state:
+    st.session_state.winners = []
+if 'losers' not in st.session_state:
+    st.session_state.losers = ""
 
-num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
+st.title("Gestione Torneo")
 
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
+# Input per aggiungere nuove squadre
+if len(st.session_state.current_pairs) == 0:
+    team_name = st.text_input("Inserisci il nome della squadra")
+    if st.button("Aggiungi squadra") and team_name:
+        st.session_state.teams.append(team_name)
 
-df = pd.DataFrame({
-    "x": x,
-    "y": y,
-    "idx": indices,
-    "rand": np.random.randn(num_points),
-})
+# Mostra le squadre aggiunte
+if len(st.session_state.current_pairs) == 0:
+    st.subheader("Squadre partecipanti:")
+    for team in st.session_state.teams:
+        st.write(team)
 
-st.altair_chart(alt.Chart(df, height=700, width=700)
-    .mark_point(filled=True)
-    .encode(
-        x=alt.X("x", axis=None),
-        y=alt.Y("y", axis=None),
-        color=alt.Color("idx", legend=None, scale=alt.Scale()),
-        size=alt.Size("rand", legend=None, scale=alt.Scale(range=[1, 150])),
-    ))
+# Generazione delle coppie di squadre
+if len(st.session_state.current_pairs) == 0:
+    if st.button("Genera coppie"):
+        st.session_state.current_pairs = create_pairs(st.session_state.teams.copy())
+        st.rerun()
+
+# Mostra le coppie e consenti di selezionare i vincitori
+if st.session_state.current_pairs:
+    print(st.session_state.current_pairs)
+    if st.session_state.losers != "":
+        st.write(f" La coppi {st.session_state.losers} è stata ripescata!!!!")
+        st.session_state.losers = ""
+
+    st.subheader(f"Round {st.session_state.round} - Seleziona i vincitori:")
+    winners = []
+    for i, (team1, team2) in enumerate(st.session_state.current_pairs):
+        st.write(f"Match {i+1}: {team1} vs {team2}")
+        if team2 != "BYE":
+            winner = st.radio(f"Vincitore Match {i+1}", [team1, team2], key=f"match_{i+1}")
+            winners.append(winner)
+        else:
+            print("WEEEEEEEEEEEEEEEEEE " )
+            st.write(f"{team1} passa direttamente")
+            winners.append(team1)
+
+    if st.button("Prossimo round"):
+        if len(st.session_state.teams) % 2 != 0:
+            losers = list(set(st.session_state.teams) - set(winners))
+            random.shuffle(losers)
+            winners.append(losers[0])
+            st.session_state.losers = losers[0]
+            st.session_state.teams = []
+        st.session_state.winners = winners
+        st.session_state.current_pairs = create_pairs(winners)
+        st.session_state.round += 1
+        st.session_state.winners = []
+        st.rerun()
+
+# Mostra il vincitore finale
+if len(st.session_state.current_pairs) == 1 and st.session_state.current_pairs[0][1] == "BYE":
+    st.subheader(f"Il vincitore del torneo è: {st.session_state.current_pairs[0][0]}")
